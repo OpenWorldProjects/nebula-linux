@@ -1,0 +1,21 @@
+target/
+node_modules/
+*.json
+!Cargo.lock
+!package.json
+!tauri.conf.json
+.env*
+*.key
+*.pem
+*.token
+*.session
+
+# Reference screenshots / third-party images (not ours to redistribute)
+/*.png
+/*.jpg
+/*.jpeg
+/*.webp
+/*.avif
+
+# Build output
+/dist/

@@ -1,0 +1,11 @@
+[Desktop Entry]
+Type=Application
+Name=Nebula
+GenericName=Game Launcher
+Comment=Unofficial GOG launcher for Linux
+Exec=@EXEC@
+Icon=nebula
+Terminal=false
+Categories=Game;
+StartupWMClass=nebula
+StartupNotify=true

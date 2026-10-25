@@ -1,0 +1,1262 @@
+// Nebula Game Launcher UI
+import { Strings } from "strings.slint";
+
+component NavItem inherits Rectangle {
+    in property <string> label;
+    in property <image> icon;
+    in property <string> badge: "";
+    in property <bool> active: false;
+    in property <color> active-bg: #29292c;
+    in property <color> hover-bg: #222225;
+    in property <color> active-accent: #8b5cf6;
+    callback clicked;
+    height: 38px;
+    background: active ? active-bg : (ta.has-hover ? hover-bg : transparent);
+    border-radius: 4px;
+    animate background { duration: 120ms; }
+    
+    HorizontalLayout {
+        width: parent.width; height: parent.height;
+        padding-left: 14px; padding-right: 14px; spacing: 12px;
+        alignment: stretch;
+        if root.icon.width > 0: Rectangle {
+            width: 20px; height: 38px;
+            Image {
+                source: root.icon; width: 17px; height: 17px;
+                x: (parent.width - self.width) / 2;
+                y: (parent.height - self.height) / 2;
+                opacity: root.active ? 1.0 : 0.65;
+            }
+        }
+        Text {
+            text: root.label;
+            color: root.active ? #ffffff : #bfbfbf;
+            font-size: 13px;
+            font-weight: root.active ? 600 : 400;
+            vertical-alignment: center;
+            horizontal-stretch: 1; horizontal-alignment: left;
+        }
+        if root.badge != "": Rectangle {
+            width: max(22px, badge-txt.preferred-width + 12px);
+            height: 18px;
+            background: root.active ? active-accent.darker(0.3) : #2a2a30;
+            border-radius: 9px;
+            y: (parent.height - self.height) / 2;
+            badge-txt := Text {
+                text: root.badge;
+                color: root.active ? #ffffff : #9898a4;
+                font-size: 11px;
+                font-weight: 600;
+                horizontal-alignment: center;
+                vertical-alignment: center;
+            }
+        }
+    }
+    ta := TouchArea { clicked => { root.clicked(); } }
+}
+
+component SectionLabel inherits HorizontalLayout {
+    in property <string> text;
+    in property <length> pad-left: 0px;
+    padding-left: root.pad-left;
+    Text { text: root.text; color: #76767e; font-size: 11px; letter-spacing: 0.8px; vertical-alignment: center; font-weight: 700; }
+}
+
+component NavArrowBtn inherits Rectangle {
+    in property <string> text;
+    in property <bool> enabled: true;
+    callback clicked;
+    width: 32px; height: 32px; border-radius: 4px;
+    background: ta.has-hover && root.enabled ? #38383e : #242427;
+    border-width: 1px;
+    border-color: #313136;
+    opacity: root.enabled ? 1.0 : 0.35;
+    Text { text: root.text; color: white; font-size: 14px; font-weight: 700; horizontal-alignment: center; vertical-alignment: center; }
+    ta := TouchArea { enabled: root.enabled; clicked => { root.clicked(); } }
+}
+
+component TopTabBtn inherits Rectangle {
+    in property <string> text;
+    in property <bool> active: false;
+    callback clicked;
+    height: 32px; width: label.preferred-width + 24px;
+    background: active ? #323238 : (ta.has-hover ? #25252a : transparent);
+    border-radius: 4px;
+    label := Text { text: root.text; color: root.active ? #ffffff : #9a9aa2; font-size: 13px; font-weight: 600; horizontal-alignment: center; vertical-alignment: center; }
+    ta := TouchArea { clicked => { root.clicked(); } }
+}
+
+component Btn inherits Rectangle {
+    in property <string> text;
+    callback clicked;
+    height: 34px; width: label.preferred-width + 28px;
+    background: ta.has-hover ? #323238 : #232326;
+    border-radius: 4px;
+    border-width: 1px;
+    border-color: ta.has-hover ? #45454e : #333338;
+    animate background { duration: 120ms; }
+    label := Text {
+        text: root.text;
+        color: #e2e2e6;
+        font-size: 12px;
+        font-weight: 600;
+        horizontal-alignment: center;
+        vertical-alignment: center;
+    }
+    ta := TouchArea { clicked => { root.clicked(); } }
+}
+
+component PrimaryBtn inherits Rectangle {
+    in property <string> text;
+    in property <bool> enabled: true;
+    callback clicked;
+    height: 38px; width: p-label.preferred-width + 36px; border-radius: 4px;
+    background: @linear-gradient(180deg, ta.has-hover ? #9ecc28 : #8fb920, #739812);
+    border-width: 1px;
+    border-color: #a4d42b;
+    opacity: root.enabled ? 1.0 : 0.6;
+    p-label := Text { text: root.text; color: white; font-size: 14px; font-weight: 700; horizontal-alignment: center; vertical-alignment: center; }
+    ta := TouchArea { enabled: root.enabled; clicked => { root.clicked(); } }
+}
+
+// A bounded content block centered in the full available page area.
+component EmptyState inherits Rectangle {
+    in property <string> title;
+    in property <string> description;
+    in property <image> icon;
+    in property <string> action;
+    callback clicked;
+    VerticalLayout {
+        width: parent.width; height: 210px;
+        y: (parent.height - self.height) / 2;
+        alignment: center; spacing: 14px;
+        Rectangle {
+            height: 68px;
+            Image { source: root.icon; width: 36px; height: 36px;
+                x: (parent.width - self.width) / 2; y: 16px; opacity: 0.65; }
+        }
+        Text { text: root.title; color: #fff; font-size: 19px; font-weight: 700; horizontal-alignment: center; }
+        Text { text: root.description; color: #92929c; font-size: 13px; horizontal-alignment: center; wrap: word-wrap; }
+        if root.action != "": HorizontalLayout {
+            alignment: center;
+            PrimaryBtn { text: root.action; clicked => { root.clicked(); } }
+        }
+    }
+}
+
+component StatCard inherits Rectangle {
+    in property <string> title;
+    in property <string> value;
+    in property <color> accent: #b36bff;
+    in property <string> subtitle: "";
+    height: 120px;
+    background: #1f1f22;
+    border-radius: 6px;
+    border-width: 1px;
+    border-color: #2e2e34;
+
+    VerticalLayout {
+        padding: 18px;
+        alignment: space-between;
+        HorizontalLayout {
+            alignment: space-between;
+            Text {
+                text: root.title;
+                color: #888892;
+                font-size: 11px;
+                font-weight: 700;
+                letter-spacing: 0.6px;
+            }
+            Rectangle {
+                width: 8px; height: 8px; border-radius: 4px;
+                background: root.accent;
+                y: (parent.height - self.height) / 2;
+            }
+        }
+        VerticalLayout {
+            spacing: 4px;
+            Text {
+                text: root.value;
+                color: root.accent;
+                font-size: 20px;
+                font-weight: 700;
+            }
+            if root.subtitle != "": Text {
+                text: root.subtitle;
+                color: #6a6a75;
+                font-size: 11px;
+            }
+        }
+    }
+}
+
+component GreenBtn inherits Rectangle {
+    in property <string> text;
+    in property <bool> enabled: true;
+    callback clicked;
+    height: 40px; border-radius: 2px;
+    background: @linear-gradient(180deg, ta.has-hover ? #a6cc26 : #98bf1e, #7aa012);
+    opacity: root.enabled ? 1.0 : 0.6;
+    Text { text: root.text; color: white; font-size: 14px; font-weight: 600; horizontal-alignment: center; vertical-alignment: center; }
+    ta := TouchArea { enabled: root.enabled; clicked => { root.clicked(); } }
+}
+
+component LoginField inherits Rectangle {
+    in-out property <string> text;
+    in property <string> placeholder;
+    in property <bool> password: false;
+    callback accepted;
+    height: 40px; background: #ececec; border-width: 1px;
+    border-color: input.has-focus ? #7aa3d8 : #bdbdbd;
+    input := TextInput {
+        x: 10px; width: parent.width - 20px; height: parent.height;
+        text <=> root.text; font-size: 14px; color: #333333;
+        vertical-alignment: center; single-line: true;
+        input-type: root.password ? InputType.password : InputType.text;
+        accepted => { root.accepted(); }
+    }
+    if root.text == "": Text {
+        x: 10px; height: parent.height; text: root.placeholder;
+        color: #999999; font-size: 14px; vertical-alignment: center;
+    }
+}
+
+component SocialBtn inherits Rectangle {
+    in property <string> text;
+    in property <image> icon;
+    in property <color> base;
+    in property <bool> enabled: true;
+    callback clicked;
+    height: 40px; border-radius: 2px;
+    background: @linear-gradient(180deg, ta.has-hover ? base.brighter(0.15) : base, base.darker(0.2));
+    HorizontalLayout {
+        alignment: center; spacing: 10px;
+        if root.icon.width > 0: Image {
+            source: root.icon; width: 20px; height: 20px; vertical-alignment: center;
+        }
+        Text { text: root.text; color: white; font-size: 13px; font-weight: 600; vertical-alignment: center; }
+    }
+    ta := TouchArea { enabled: root.enabled; clicked => { root.clicked(); } }
+}
+
+component LoginView inherits Rectangle {
+    in property <bool> busy;
+    in property <string> error;
+    callback login(string, string);
+    callback provider(string);
+    callback open-link(string);
+    property <string> email: "";
+    property <string> pass: "";
+    background: #1d1d1d;
+
+    Rectangle {
+        width: 420px; height: 570px;
+        x: (parent.width - self.width) / 2; y: (parent.height - self.height) / 2;
+        background: #dcdcdc; border-radius: 4px;
+        drop-shadow-blur: 30px; drop-shadow-color: #000000aa;
+
+        VerticalLayout {
+            padding: 34px; padding-bottom: 64px; spacing: 11px;
+            HorizontalLayout {
+                height: 60px; spacing: 14px; alignment: center;
+                Image {
+                    source: @image-url("../assets/icon-256.png");
+                    width: 46px; height: 46px;
+                }
+                Text { text: "NEBULA"; color: #3d3452; font-size: 30px; font-weight: 800; vertical-alignment: center; }
+            }
+            Text { text: "Sign in with your GOG account"; color: #666666; font-size: 13px; horizontal-alignment: center; }
+            LoginField { placeholder: "Email"; text <=> root.email; accepted => { root.login(root.email, root.pass); } }
+            LoginField { placeholder: "Password"; password: true; text <=> root.pass; accepted => { root.login(root.email, root.pass); } }
+            GreenBtn { text: root.busy ? "SIGNING IN..." : "SIGN IN NOW"; enabled: !root.busy; clicked => { root.login(root.email, root.pass); } }
+            HorizontalLayout {
+                height: 18px; spacing: 10px;
+                Rectangle { height: 1px; background: #bdbdbd; }
+                Text { text: "OR"; color: #888888; font-size: 10px; vertical-alignment: center; }
+                Rectangle { height: 1px; background: #bdbdbd; }
+            }
+            SocialBtn { text: "CONTINUE WITH GOOGLE"; icon: @image-url("../assets/providers/google.png"); base: #d6452f; enabled: !root.busy; clicked => { root.provider("google"); } }
+            SocialBtn { text: "CONTINUE WITH STEAM"; icon: @image-url("../assets/providers/steam.png"); base: #2a475e; enabled: !root.busy; clicked => { root.provider("steam"); } }
+            SocialBtn { text: "CONTINUE WITH XBOX"; icon: @image-url("../assets/providers/xbox.png"); base: #107c10; enabled: !root.busy; clicked => { root.provider("xbox"); } }
+            if root.error != "": Text { text: root.error; color: #b22222; font-size: 12px; wrap: word-wrap; }
+        }
+
+        Rectangle {
+            y: parent.height - self.height; height: 50px; background: #d0d0d0; border-bottom-left-radius: 4px; border-bottom-right-radius: 4px;
+            HorizontalLayout {
+                alignment: center; spacing: 12px;
+                Text { text: "Password reset"; color: pr.has-hover ? #000000 : #444444; font-size: 12px; vertical-alignment: center; pr := TouchArea { clicked => { root.open-link("https://www.gog.com/user/forgotPassword"); } } }
+                Text { text: "•"; color: #444444; vertical-alignment: center; }
+                Text { text: "Sign up on GOG"; color: su.has-hover ? #000000 : #444444; font-size: 12px; vertical-alignment: center; su := TouchArea { clicked => { root.open-link("https://www.gog.com/user/register"); } } }
+            }
+        }
+    }
+}
+
+export struct GameItem {
+    id: int,
+    title: string,
+    slug: string,
+    category: string,
+    cover: image,
+    blur: image,
+    windows: bool,
+    linux: bool,
+    installed: bool,
+}
+
+export struct StoreDealItem {
+    id: string,
+    title: string,
+    price: string,
+    base_price: string,
+    discount: string,
+    cover: image,
+}
+
+component GameTile inherits Rectangle {
+    in property <GameItem> game;
+    in property <length> tile-width: 220px;
+    in property <color> accent: #a775ef;
+    in property <bool> preview-hover: false;
+    property <bool> hovered: ta.has-hover || root.preview-hover;
+    callback clicked;
+    width: tile-width; height: tile-width * 9 / 16 + 32px;
+    
+    Rectangle {
+        y: root.hovered ? -4px : 0px;
+        width: parent.width; height: parent.width * 9 / 16;
+        background: #191622;
+        border-radius: 4px;
+        border-width: 1px;
+        border-color: root.hovered ? root.accent.brighter(0.25) : #2f2b3b;
+        drop-shadow-color: root.accent.with-alpha(root.hovered ? 0.55 : 0);
+        drop-shadow-blur: root.hovered ? 18px : 0px;
+        drop-shadow-offset-y: 3px;
+        animate drop-shadow-color, drop-shadow-blur { duration: 180ms; easing: ease-out; }
+        animate y { duration: 140ms; easing: ease-out; }
+        animate border-color { duration: 140ms; }
+        Rectangle {
+            x: 1px; y: 1px; width: parent.width - 2px; height: parent.height - 2px;
+            border-radius: 3px; clip: true;
+            if root.game.cover.width > 0: Image { source: root.game.cover; width: parent.width; height: parent.height; image-fit: contain; }
+            if root.game.cover.width == 0: Image { source: @image-url("../assets/icons/games.png"); width: 42px; height: 42px;
+                x: (parent.width - self.width) / 2; y: (parent.height - self.height) / 2; opacity: 0.55; }
+        }
+    }
+    Text {
+        y: parent.width * 9 / 16 + 8px; width: parent.width; overflow: elide;
+        text: root.game.title; color: root.hovered ? #ffffff : #c2c2c8; font-size: 12px; font-weight: 500;
+        animate color { duration: 120ms; }
+    }
+    ta := TouchArea { width: root.width; height: root.height; mouse-cursor: pointer; clicked => { root.clicked(); } }
+}
+
+component StoreCard inherits Rectangle {
+    in property <StoreDealItem> item;
+    callback clicked;
+    height: 72px; background: ta.has-hover ? #25242b : #1c1c1f;
+    border-radius: 6px;
+    border-width: 1px; border-color: ta.has-hover ? #63438a : #2b2b32;
+    animate background { duration: 120ms; }
+    animate border-color { duration: 120ms; }
+
+    HorizontalLayout {
+        width: parent.width; height: parent.height;
+        padding-left: 8px; padding-right: 18px; spacing: 14px;
+        alignment: stretch;
+        // Game thumbnail preview cover
+        Rectangle {
+            width: 112px; height: 52px; border-radius: 3px; background: #2a2a32; clip: true;
+            y: (parent.height - self.height) / 2;
+            if root.item.cover.width > 0: Image {
+                source: root.item.cover; width: parent.width; height: parent.height; image-fit: cover;
+            }
+            if root.item.cover.width == 0: Image {
+                source: @image-url("../assets/icons/store.png"); width: 16px; height: 16px;
+                x: (parent.width - self.width) / 2; y: (parent.height - self.height) / 2;
+                opacity: 0.6;
+            }
+        }
+        Text {
+            text: root.item.title; color: ta.has-hover ? #ffffff : #d8d8de;
+            font-size: 14px; font-weight: 600; vertical-alignment: center;
+            horizontal-stretch: 1; overflow: elide;
+        }
+        if root.item.discount != "": Rectangle {
+            width: 52px; height: 24px; background: #7c3aed; border-radius: 4px;
+            y: (parent.height - self.height) / 2;
+            Text { text: root.item.discount; color: white; font-size: 12px; font-weight: 700; horizontal-alignment: center; vertical-alignment: center; }
+        }
+        if root.item.base_price != "": Text {
+            text: root.item.base_price; color: #72727e; font-size: 12px; vertical-alignment: center;
+        }
+        Rectangle {
+            width: 76px; height: 32px;
+            y: (parent.height - self.height) / 2;
+            Text {
+                text: root.item.price; color: #a3e635; font-size: 14px; font-weight: 700;
+                vertical-alignment: center; horizontal-alignment: right;
+            }
+        }
+    }
+    ta := TouchArea { clicked => { root.clicked(); } }
+}
+
+export component MainWindow inherits Window {
+    title: "Nebula";
+    icon: @image-url("../assets/icon.png");
+    preferred-width: 1280px; preferred-height: 800px;
+    min-width: 900px; min-height: 600px;
+    // Appearance & Theming: 0 = Nebula Dark, 1 = Classic Galaxy, 2 = Cyberpunk Cyan
+    in-out property <int> selected-theme: 1;
+    in-out property <bool> glass-enabled: true;
+    
+    // Computed theme colors
+    property <color> theme-bg: root.selected-theme == 1 ? #202023 : (root.selected-theme == 2 ? #0b1120 : #191622);
+    property <color> theme-sidebar-bg: (root.selected-theme == 1 ? #18181a : (root.selected-theme == 2 ? #080c16 : #13111b)).with-alpha(root.glass-enabled ? 0.78 : 1);
+    property <color> theme-card-bg: (root.selected-theme == 1 ? #26262a : (root.selected-theme == 2 ? #111a2d : #201d2c)).with-alpha(root.glass-enabled ? 0.72 : 1);
+    property <color> theme-card-border: root.selected-theme == 1 ? #34343a : (root.selected-theme == 2 ? #1e293b : #2d293d);
+    property <color> theme-accent: root.selected-theme == 1 ? #98bf1e : (root.selected-theme == 2 ? #06b6d4 : #8b5cf6);
+    property <color> theme-nav-active: root.selected-theme == 1 ? #2f2f34 : (root.selected-theme == 2 ? #162238 : #29243a);
+    property <color> theme-nav-hover: root.selected-theme == 1 ? #232326 : (root.selected-theme == 2 ? #0f1728 : #1c1926);
+
+    // Carousel state
+    in-out property <int> carousel-idx: 0;
+    in property <bool> window-active: false;
+    in property <bool> preview-autoplay: false;
+    in property <bool> preview-tile-hover: false;
+
+    background: root.theme-bg;
+    default-font-family: "Lato";
+
+    in-out property <bool> logged-in: false;
+    in property <image> avatar;
+    in property <string> username: "";
+    in property <bool> login-busy: false;
+    in property <string> login-error: "";
+    callback login(string, string);
+    callback login-provider(string);
+    callback open-link(string);
+    callback logout();
+
+    in property <[GameItem]> installed-games;
+    in-out property <bool> import-open: false;
+    in-out property <string> import-title;
+    in-out property <string> import-path;
+    in-out property <string> import-error;
+    callback import-game(string, string);
+    callback browse-game;
+    callback remove-import(int);
+    in property <[GameItem]> games;
+    in property <bool> selected-bookmarked;
+    in property <[GameItem]> recent;
+    in property <[GameItem]> filtered-games;
+    in property <[GameItem]> bookmarks;
+    in property <string> bookmark-status;
+    callback toggle-bookmark(int);
+    callback filter-games(string, int);
+    in-out property <string> library-query;
+    in-out property <int> platform-filter: 0;
+    in property <bool> store-loading;
+    in property <string> store-error;
+    in property <[StoreDealItem]> store-deals;
+    in property <bool> library-loading: false;
+    in property <int> download-done: 0;
+    in property <int> download-total: 0;
+
+    in property <string> sync-status: "Never synced";
+    in property <int> synced-games: 0;
+    in property <int> conflicts: 0;
+    callback sync-clicked;
+    callback play-game(int);
+    callback install-game(int);
+    callback fetch-deals(bool, string, string);
+    
+    // Page IDs:
+    // 0=Recent, 1=Owned Games, 2=Installed, 3=Subscriptions, 4=Downloads
+    // 5=Activity, 6=Friends Online, 7=Messages, 8=Invites
+    // 9=Store, 10=More Offers, 11=Order History
+    // 20=GameDetail
+    in-out property <int> current-page: 0;
+    property <int> prev-page: 0;
+    in-out property <GameItem> selected-game;
+    callback selection-changed;
+    changed selected-game => { root.selection-changed(); }
+
+    // Search and filters
+    property <string> search-store-text: "";
+    
+
+    function navigate-to(p: int) {
+        if (root.current-page != p) {
+            root.prev-page = root.current-page;
+            root.current-page = p;
+        }
+    }
+
+    function navigate-back() {
+        root.current-page = root.prev-page;
+    }
+
+    if !root.logged-in: LoginView {
+        width: parent.width; height: parent.height;
+        busy: root.login-busy; error: root.login-error;
+        login(e, p) => { root.login(e, p); }
+        provider(n) => { root.login-provider(n); }
+        open-link(u) => { root.open-link(u); }
+    }
+
+    property <image> glass-artwork: root.current-page == 20 && root.selected-game.blur.width > 0 ? root.selected-game.blur : (root.recent.length > 0 ? root.recent[0].blur : @image-url("../assets/glass-backdrop.svg"));
+    if root.logged-in && root.glass-enabled: Rectangle {
+        width: parent.width; height: parent.height;
+        Image { source: root.glass-artwork; width: parent.width; height: parent.height; image-fit: cover; opacity: 0.65; }
+        Rectangle { background: @linear-gradient(180deg, #16131f44, #14141bd9); }
+    }
+
+    if root.logged-in: HorizontalLayout {
+        // SIDEBAR
+        Rectangle {
+            width: 250px; background: root.theme-sidebar-bg;
+            border-width: 1px; border-color: root.theme-card-border;
+            
+            HorizontalLayout {
+                x: 20px; y: 12px; width: 210px; height: 28px; spacing: 9px; alignment: start;
+                Image { source: @image-url("../assets/icon-256.png"); width: 26px; height: 26px; image-fit: contain; }
+                Text { text: "NEBULA"; color: #eee; font-size: 15px; font-weight: 700; letter-spacing: 1px; vertical-alignment: center; }
+            }
+
+            // User Header with Avatar & Dropdown trigger
+            Rectangle {
+                x: 12px; y: 50px; width: parent.width - 24px; height: 44px;
+                background: u-area.has-hover || profile-menu.is-open ? root.theme-card-bg : transparent;
+                border-radius: 6px;
+                animate background { duration: 120ms; }
+
+                HorizontalLayout {
+                    width: parent.width; height: parent.height;
+                    padding-left: 8px; padding-right: 8px; spacing: 10px; alignment: start;
+                    // User avatar with online indicator
+                    Rectangle {
+                        width: 32px; height: 32px; border-radius: 16px; clip: true; background: root.theme-accent.darker(0.3);
+                        y: (parent.height - self.height) / 2;
+                        Image {
+                            source: root.avatar.width > 0 ? root.avatar : @image-url("../assets/icons/user.svg"); width: 32px; height: 32px; image-fit: cover;
+                            x: (parent.width - self.width) / 2; y: (parent.height - self.height) / 2;
+                        }
+                        // Online status badge
+                        Rectangle {
+                            x: 22px; y: 22px; width: 10px; height: 10px; border-radius: 5px;
+                            background: #10b981; border-width: 2px; border-color: root.theme-sidebar-bg;
+                        }
+                    }
+                    Text {
+                        text: root.username != "" ? root.username : "GOG user";
+                        color: #ffffff; font-size: 14px; font-weight: 700;
+                        vertical-alignment: center; horizontal-stretch: 1; overflow: elide;
+                    }
+                    Text {
+                        text: profile-menu.is-open ? "▴" : "▾";
+                        color: #7a7a85; font-size: 10px; vertical-alignment: center;
+                    }
+                }
+                u-area := TouchArea { clicked => { profile-menu.show(); } }
+            }
+
+            // User dropdown popover
+            profile-menu := PopupWindow {
+                close-policy: close-on-click-outside;
+                x: 12px; y: 98px; width: 226px; height: 175px;
+                Rectangle {
+                background: #29292eee; border-radius: 6px;
+                border-width: 1px; border-color: #ffffff22;
+
+                VerticalLayout {
+                    padding: 8px; spacing: 2px;
+                    Rectangle {
+                        height: 32px; border-radius: 4px;
+                        background: ta-st.has-hover ? root.theme-nav-hover : transparent;
+                        HorizontalLayout {
+                            padding-left: 10px; spacing: 8px;
+                            Rectangle { width: 8px; height: 8px; border-radius: 4px; background: #10b981; y: (parent.height - self.height) / 2; }
+                            Text { text: "Online"; color: #ffffff; font-size: 13px; font-weight: 600; vertical-alignment: center; }
+                        }
+                        ta-st := TouchArea { clicked => { profile-menu.close(); } }
+                    }
+                    Rectangle {
+                        height: 32px; border-radius: 4px;
+                        background: ta-acc.has-hover ? root.theme-nav-hover : transparent;
+                        HorizontalLayout {
+                            padding-left: 10px; spacing: 8px;
+                            Text { text: "Account management ↗"; color: #cccccc; font-size: 13px; vertical-alignment: center; }
+                        }
+                        ta-acc := TouchArea { clicked => { profile-menu.close(); root.open-link("https://www.gog.com/account"); } }
+                    }
+                    Rectangle {
+                        height: 32px; border-radius: 4px;
+                        background: ta-ord.has-hover ? root.theme-nav-hover : transparent;
+                        HorizontalLayout {
+                            padding-left: 10px; spacing: 8px;
+                            Text { text: "Order history"; color: #cccccc; font-size: 13px; vertical-alignment: center; }
+                        }
+                        ta-ord := TouchArea { clicked => { profile-menu.close(); root.navigate-to(11); } }
+                    }
+                    Rectangle { height: 1px; background: root.theme-card-border; }
+                    Rectangle {
+                        height: 32px; border-radius: 4px;
+                        background: ta-lo.has-hover ? #3a2228 : transparent;
+                        HorizontalLayout {
+                            padding-left: 10px; spacing: 8px;
+                            Text { text: "Log out"; color: #f87171; font-size: 13px; font-weight: 600; vertical-alignment: center; }
+                        }
+                        ta-lo := TouchArea { clicked => { profile-menu.close(); root.logout(); } }
+                    }
+                }
+            }
+
+            }
+
+            Flickable {
+                x: 8px; y: 100px; width: parent.width - 16px; height: parent.height - 100px;
+                content-height: 600px;
+                VerticalLayout {
+                    spacing: 2px;
+                    SectionLabel { text: "GAMES"; height: 26px; }
+                    NavItem { active-bg: root.theme-nav-active; hover-bg: root.theme-nav-hover; active-accent: root.theme-accent; label: "Recent"; icon: @image-url("../assets/icons/recent.png"); active: root.current-page == 0; clicked => { root.navigate-to(0); } }
+                    NavItem { active-bg: root.theme-nav-active; hover-bg: root.theme-nav-hover; active-accent: root.theme-accent; label: "Owned games"; icon: @image-url("../assets/icons/games.png"); badge: "" + root.games.length; active: root.current-page == 1; clicked => { root.navigate-to(1); } }
+                    NavItem { active-bg: root.theme-nav-active; hover-bg: root.theme-nav-hover; active-accent: root.theme-accent; label: "Installed"; icon: @image-url("../assets/icons/installed.png"); badge: "" + root.installed-games.length; active: root.current-page == 2; clicked => { root.navigate-to(2); } }
+                    NavItem { active-bg: root.theme-nav-active; hover-bg: root.theme-nav-hover; active-accent: root.theme-accent; label: "Subscriptions"; icon: @image-url("../assets/icons/subscriptions.png"); badge: "0"; active: root.current-page == 3; clicked => { root.navigate-to(3); } }
+                    NavItem { active-bg: root.theme-nav-active; hover-bg: root.theme-nav-hover; active-accent: root.theme-accent; label: "Downloads"; icon: @image-url("../assets/icons/downloads.png"); badge: root.download-total > 0 ? "" + (root.download-total - root.download-done) : ""; active: root.current-page == 4; clicked => { root.navigate-to(4); } }
+                    NavItem { active-bg: root.theme-nav-active; hover-bg: root.theme-nav-hover; active-accent: root.theme-accent; label: "Bookmarks"; icon: @image-url("../assets/icons/bookmark.png"); active: root.current-page == 12; clicked => { root.navigate-to(12); } }
+
+                    SectionLabel { text: "FRIENDS"; height: 32px; }
+                    NavItem { active-bg: root.theme-nav-active; hover-bg: root.theme-nav-hover; active-accent: root.theme-accent; label: "Activity"; icon: @image-url("../assets/icons/activity.png"); active: root.current-page == 5; clicked => { root.navigate-to(5); } }
+                    NavItem { active-bg: root.theme-nav-active; hover-bg: root.theme-nav-hover; active-accent: root.theme-accent; label: "Friends online"; icon: @image-url("../assets/icons/friends.png"); badge: "0"; active: root.current-page == 6; clicked => { root.navigate-to(6); } }
+                    NavItem { active-bg: root.theme-nav-active; hover-bg: root.theme-nav-hover; active-accent: root.theme-accent; label: "Messages"; icon: @image-url("../assets/icons/messages.png"); badge: "0"; active: root.current-page == 7; clicked => { root.navigate-to(7); } }
+                    NavItem { active-bg: root.theme-nav-active; hover-bg: root.theme-nav-hover; active-accent: root.theme-accent; label: "Invites"; icon: @image-url("../assets/icons/invites.png"); badge: "0"; active: root.current-page == 8; clicked => { root.navigate-to(8); } }
+
+                    SectionLabel { text: "DEALS"; height: 32px; }
+                    NavItem { active-bg: root.theme-nav-active; hover-bg: root.theme-nav-hover; active-accent: root.theme-accent; label: "Store"; icon: @image-url("../assets/icons/store.png"); active: root.current-page == 9; clicked => { root.navigate-to(9); root.fetch-deals(false, "desc:bestselling", root.search-store-text); } }
+                    NavItem { active-bg: root.theme-nav-active; hover-bg: root.theme-nav-hover; active-accent: root.theme-accent; label: "More offers"; icon: @image-url("../assets/icons/offers.png"); active: root.current-page == 10; clicked => { root.navigate-to(10); root.fetch-deals(true, "desc:discount", root.search-store-text); } }
+                    NavItem { active-bg: root.theme-nav-active; hover-bg: root.theme-nav-hover; active-accent: root.theme-accent; label: "Order history"; icon: @image-url("../assets/icons/orders.png"); active: root.current-page == 11; clicked => { root.navigate-to(11); } }
+
+                    SectionLabel { text: "CONFIGURATION"; height: 32px; }
+                    NavItem { active-bg: root.theme-nav-active; hover-bg: root.theme-nav-hover; active-accent: root.theme-accent; label: "Preferences"; icon: @image-url("../assets/icons/settings.svg"); active: root.current-page == 13; clicked => { root.navigate-to(13); } }
+                    Rectangle { height: 20px; }
+                }
+            }
+        }
+
+        // MAIN CONTENT
+        VerticalLayout {
+            width: root.width - 250px; horizontal-stretch: 1;
+            padding-left: 28px; padding-right: 28px; spacing: 14px;
+            
+            // TOP BAR (with GOG Galaxy Back/Forward and Store Tabs)
+            HorizontalLayout {
+                height: 60px; spacing: 12px;
+                
+                // Back & Forward Navigation buttons
+                HorizontalLayout {
+                    spacing: 6px; alignment: start;
+                    y: 14px;
+                    NavArrowBtn {
+                        text: "←"; enabled: root.current-page != root.prev-page;
+                        clicked => { root.navigate-back(); }
+                    }
+                    NavArrowBtn {
+                        text: "→"; enabled: false;
+                    }
+                }
+
+                // If in Store/Offers/Orders, show Galaxy tabs
+                if root.current-page == 9 || root.current-page == 10 || root.current-page == 11: HorizontalLayout {
+                    spacing: 4px; y: 14px; alignment: start;
+                    TopTabBtn { text: "Store"; active: root.current-page == 9; clicked => { root.navigate-to(9); root.fetch-deals(false, "desc:bestselling", root.search-store-text); } }
+                    TopTabBtn { text: "More offers"; active: root.current-page == 10; clicked => { root.navigate-to(10); root.fetch-deals(true, "desc:discount", root.search-store-text); } }
+                    TopTabBtn { text: "Order history"; active: root.current-page == 11; clicked => { root.navigate-to(11); } }
+                }
+
+                // Search Store input (Galaxy style)
+                if root.current-page == 9 || root.current-page == 10: Rectangle {
+                    y: 14px; width: 220px; height: 32px; background: root.theme-card-bg; border-radius: 4px; border-width: 1px; border-color: root.theme-card-border;
+                    Image {
+                        source: @image-url("../assets/icons/search.svg");
+                        x: 10px; y: 8px; width: 16px; height: 16px; image-fit: contain;
+                        TouchArea { clicked => { store-search.focus(); } }
+                    }
+                    store-search := TextInput {
+                        x: 34px; width: parent.width - 44px; height: parent.height;
+                        text <=> root.search-store-text; font-size: 13px; color: white;
+                        vertical-alignment: center; single-line: true;
+                        accepted => {
+                            root.fetch-deals(root.current-page == 10, root.current-page == 10 ? "desc:discount" : "desc:bestselling", root.search-store-text);
+                        }
+                    }
+                    if root.search-store-text == "": Text {
+                        x: 34px; width: parent.width - 42px; height: parent.height; text: "Search store..."; color: #777; font-size: 12px; vertical-alignment: center;
+                        TouchArea { clicked => { store-search.focus(); } }
+                    }
+                }
+
+                if root.current-page == 9 || root.current-page == 10: Btn {
+                    y: 14px; text: "Search";
+                    clicked => { root.fetch-deals(root.current-page == 10, root.current-page == 10 ? "desc:discount" : "desc:bestselling", root.search-store-text); }
+                }
+                Rectangle {}
+
+                HorizontalLayout {
+                    alignment: end; spacing: 10px;
+                    Btn { y: 14px; text: "＋ Import game"; clicked => { root.import-error = ""; root.import-open = true; } }
+                    Btn { y: 14px; text: "⟳  Sync cloud saves"; clicked => { root.sync-clicked(); } }
+                }
+            }
+
+            if root.sync-status != "Never synced": Rectangle {
+                height: 40px; background: #302b21;
+                Text { x: 12px; width: parent.width - 24px; height: parent.height;
+                    text: root.sync-status; color: #e6c88a; font-size: 12px; vertical-alignment: center; wrap: word-wrap; }
+            }
+
+            // Cover progress
+            if root.download-total > 0 && root.download-done < root.download-total: Rectangle {
+                height: 28px; background: #221c2c; border-radius: 4px; border-width: 1px; border-color: #3b2a52;
+                HorizontalLayout {
+                    padding-left: 14px; padding-right: 14px; spacing: 12px;
+                    Text { text: "Downloading library covers: " + root.download-done + " / " + root.download-total; color: #b36bff; font-size: 11px; font-weight: 600; vertical-alignment: center; }
+                    Rectangle {
+                        height: 6px; background: #322543; border-radius: 3px; clip: true;
+                        Rectangle {
+                            x: 0; width: parent.width * (root.download-done / max(1, root.download-total));
+                            background: @linear-gradient(90deg, #98bf1e, #b36bff);
+                        }
+                    }
+                }
+            }
+
+            // PAGE 0: RECENT
+            if root.current-page == 0: VerticalLayout {
+                spacing: 16px;
+                SectionLabel { text: "RECENTLY ADDED"; height: 24px; }
+                Flickable {
+                    height: 180px; content-height: self.height;
+                    content-width: max(self.width, root.recent.length * 240px + 4px);
+                    for g[i] in root.recent: GameTile {
+                        x: i * 240px + 12px; y: 12px;
+                        game: g; accent: root.theme-accent; preview-hover: root.preview-tile-hover; tile-width: 220px;
+                        clicked => { root.selected-game = g; root.navigate-to(20); }
+                    }
+                }
+                SectionLabel { text: "CLOUD SYNC STATUS"; height: 32px; }
+                HorizontalLayout {
+                    spacing: 18px; height: 120px;
+                    StatCard {
+                        title: "GAMES SYNCED";
+                        value: "" + root.synced-games;
+                        accent: #a855f7;
+                        subtitle: "GOG Galaxy Cloud Storage";
+                    }
+                    StatCard {
+                        title: "SYNC CONFLICTS";
+                        value: "" + root.conflicts;
+                        accent: #10b981;
+                        subtitle: "No manual action required";
+                    }
+                    StatCard {
+                        title: "LAST SYNC STATUS";
+                        value: root.sync-status;
+                        accent: #f59e0b;
+                        subtitle: "Synced before launch & on exit";
+                    }
+                }
+                Rectangle {}
+            }
+
+            // PAGE 1: OWNED GAMES
+            if root.current-page == 1: VerticalLayout {
+                spacing: 10px;
+                HorizontalLayout {
+                    height: 32px;
+                    SectionLabel { text: root.library-loading ? "LOADING LIBRARY..." : "OWNED GAMES (" + root.games.length + ")"; }
+                    Rectangle {}
+                }
+                HorizontalLayout {
+                    height: 36px; spacing: 12px;
+                    Rectangle {
+                        horizontal-stretch: 1; background: #232326; border-width: 1px; border-color: #404046;
+                        Image { source: @image-url("../assets/icons/search.svg"); x: 12px; y: 10px; width: 16px; height: 16px;
+                            TouchArea { clicked => { library-search.focus(); } }
+                        }
+                        library-search := TextInput {
+                            x: 36px; width: parent.width - 48px; height: parent.height;
+                            text <=> root.library-query; color: white; single-line: true; vertical-alignment: center;
+                            edited => { root.filter-games(root.library-query, root.platform-filter); }
+                        }
+                        if root.library-query == "": Text { x: 36px; text: "Search your games"; color: #777; height: parent.height; vertical-alignment: center; }
+                    }
+                    Text { text: "FILTER BY"; color: #999; font-size: 11px; vertical-alignment: center; }
+                    Rectangle {
+                        width: 180px; height: 36px; background: #29292d; border-width: 1px; border-color: #45454b; border-radius: 3px;
+                        Text { x: 12px; height: parent.height; text: root.platform-filter == 0 ? "All platforms" : (root.platform-filter == 1 ? "Linux" : "Windows"); color: #eee; font-size: 12px; vertical-alignment: center; }
+                        Text { x: parent.width - 24px; height: parent.height; text: "⌄"; color: #aaa; vertical-alignment: center; }
+                        TouchArea { clicked => { platform-menu.show(); } }
+                        platform-menu := PopupWindow {
+                            y: 40px; width: 180px; height: 116px;
+                            Rectangle {
+                                background: #29292d; border-width: 1px; border-color: #45454b;
+                                VerticalLayout {
+                                    padding: 4px; spacing: 0px;
+                                    for label[i] in ["All platforms", "Linux", "Windows"]: Rectangle {
+                                        height: 36px; background: choice.has-hover ? #3b3b41 : transparent;
+                                        Text { x: 10px; height: parent.height; text: (root.platform-filter == i ? "✓  " : "    ") + label; color: #eee; font-size: 12px; vertical-alignment: center; }
+                                        choice := TouchArea { clicked => { root.platform-filter = i; root.filter-games(root.library-query, i); platform-menu.close(); } }
+                                    }
+                                }
+                            }
+                        }
+                    }
+                    Btn { text: "Clear"; clicked => { root.library-query = ""; root.platform-filter = 0; root.filter-games("", 0); } }
+                }
+                if root.filtered-games.length == 0: EmptyState { title: root.library-loading ? "Loading library…" : "No games found"; description: "Try a different search or platform filter."; }
+                if root.filtered-games.length > 0: Flickable {
+                    property <int> cols: max(1, floor((self.width + 20px) / 240px));
+                    property <length> cell-width: (self.width - 4px) / self.cols;
+                    property <length> row-height: (self.cell-width - 20px) * 9 / 16 + 52px;
+                    content-width: self.width;
+                    content-height: ceil(root.filtered-games.length / cols) * self.row-height + 8px;
+                    for g[i] in root.filtered-games: GameTile {
+                        x: 12px + mod(i, parent.cols) * parent.cell-width;
+                        y: floor(i / parent.cols) * parent.row-height + 12px;
+                        game: g; accent: root.theme-accent; preview-hover: root.preview-tile-hover; tile-width: parent.cell-width - 20px;
+                        clicked => { root.selected-game = g; root.navigate-to(20); }
+                    }
+                }
+            }
+
+            // PAGE 2: INSTALLED
+            if root.current-page == 2: VerticalLayout {
+                spacing: 12px;
+                SectionLabel { text: "INSTALLED GAMES (" + root.installed-games.length + ")"; height: 26px; }
+                if root.installed-games.length == 0: EmptyState {
+                    title: Strings.empty-installed-title; description: "Install a game from your library, or add an existing native executable or Windows .exe.";
+                    icon: @image-url("../assets/icons/installed.png"); action: "Import installed game";
+                    clicked => { root.import-error = ""; root.import-open = true; }
+                }
+                if root.installed-games.length > 0: Flickable {
+                    property <int> cols: max(1, floor((self.width + 20px) / 240px));
+                    property <length> cell-width: (self.width - 4px) / self.cols;
+                    property <length> row-height: (self.cell-width - 20px) * 9 / 16 + 52px;
+                    content-width: self.width;
+                    content-height: ceil(root.installed-games.length / cols) * self.row-height + 12px;
+                    for g[i] in root.installed-games: GameTile {
+                        x: 12px + mod(i, parent.cols) * parent.cell-width;
+                        y: 12px + floor(i / parent.cols) * parent.row-height;
+                        game: g; accent: root.theme-accent; preview-hover: root.preview-tile-hover; tile-width: parent.cell-width - 20px;
+                        clicked => { root.selected-game = g; root.navigate-to(20); }
+                    }
+                }
+            }
+
+            // PAGE 3: SUBSCRIPTIONS
+            if root.current-page == 3: EmptyState {
+                title: Strings.empty-subscriptions-title; description: Strings.empty-subscriptions-desc;
+                icon: @image-url("../assets/icons/subscriptions.png"); 
+            }
+
+            // PAGE 4: DOWNLOADS
+            if root.current-page == 4: VerticalLayout {
+                spacing: 16px;
+                SectionLabel { text: "DOWNLOAD QUEUE"; height: 24px; }
+                if root.download-total > 0 && root.download-done < root.download-total: Rectangle {
+                    height: 70px; background: #232029; border-radius: 4px; border-width: 1px; border-color: #3b324d;
+                    HorizontalLayout {
+                        padding: 16px; spacing: 16px;
+                        Image { source: @image-url("../assets/icons/downloads.png"); width: 32px; height: 32px; vertical-alignment: center; }
+                        VerticalLayout {
+                            alignment: center; spacing: 4px;
+                            Text { text: "Metadata & Artwork Sync"; color: #fff; font-weight: 700; font-size: 14px; }
+                            Text { text: "Downloading game artwork: " + root.download-done + " of " + root.download-total; color: #aaa; font-size: 12px; }
+                        }
+                    }
+                }
+                if root.download-total == 0 || root.download-done >= root.download-total: EmptyState {
+                    title: "Download queue is empty";
+                    description: "Artwork downloads appear here.";
+                    icon: @image-url("../assets/icons/downloads.png");
+                }
+            }
+
+            // PAGE 5: ACTIVITY
+            if root.current-page == 5: VerticalLayout {
+                spacing: 16px;
+                SectionLabel { text: "ACTIVITY FEED"; height: 24px; }
+                Rectangle {
+                    height: 90px; background: #202022; border-radius: 4px; border-width: 1px; border-color: #333338;
+                    HorizontalLayout {
+                        padding: 16px; spacing: 14px;
+                        Image { source: @image-url("../assets/icons/activity.png"); width: 28px; height: 28px; vertical-alignment: center; }
+                        VerticalLayout {
+                            alignment: center; spacing: 4px;
+                            Text { text: "Welcome to Nebula Launcher"; color: #ffffff; font-weight: 700; font-size: 14px; }
+                            Text { text: "Signed in as " + root.username + " • Your GOG library is connected."; color: #aaa; font-size: 12px; }
+                        }
+                    }
+                }
+                Rectangle {}
+            }
+
+            // PAGE 6: FRIENDS ONLINE
+            if root.current-page == 6: VerticalLayout {
+                spacing: 16px;
+                SectionLabel { text: "FRIENDS (0 ONLINE)"; height: 24px; }
+                EmptyState { title: Strings.empty-friends-title; description: Strings.empty-friends-desc; icon: @image-url("../assets/icons/friends.png"); }
+            }
+
+            // PAGE 7: MESSAGES
+            if root.current-page == 7: EmptyState {
+                title: Strings.empty-messages-title; description: Strings.empty-messages-desc;
+                icon: @image-url("../assets/icons/messages.png"); 
+            }
+
+            // PAGE 8: INVITES
+            if root.current-page == 8: EmptyState {
+                title: Strings.empty-invites-title; description: Strings.empty-invites-desc;
+                icon: @image-url("../assets/icons/invites.png"); 
+            }
+
+            // PAGE 9 & 10: STORE & MORE OFFERS
+            if root.current-page == 9 || root.current-page == 10: VerticalLayout {
+                spacing: 12px;
+                HorizontalLayout {
+                    height: 36px; spacing: 14px;
+                    SectionLabel { text: root.current-page == 9 ? "GOG STORE HIGHLIGHTS & BESTSELLERS" : "GOG DEALS & MORE OFFERS"; }
+                    Rectangle {}
+                    Btn { text: "Open GOG Store in Browser ↗"; clicked => { root.open-link("https://www.gog.com"); } }
+                }
+
+                if root.store-loading: Text { text: "Searching GOG store…"; color: #aaa; }
+                if root.store-error != "": Text { text: root.store-error; color: #f59e0b; wrap: word-wrap; }
+                if !root.store-loading && root.store-error == "" && root.store-deals.length == 0: EmptyState {
+                    title: "No offers found"; description: "Try another search.";
+                }
+                if root.store-deals.length > 0 && root.search-store-text == "": Rectangle {
+                    height: min(320px, self.width * 740 / 1600); clip: true; background: #202022;
+                    property <int> slide-count: min(5, root.store-deals.length);
+                    carousel := TouchArea {
+                        width: parent.width; height: parent.height;
+                        Image { source: root.store-deals[root.carousel-idx].cover; width: parent.width; height: parent.height; image-fit: cover; }
+                        Rectangle { background: @linear-gradient(90deg, #101014ee, #10101422); }
+                        VerticalLayout {
+                            x: 24px; y: 28px; width: parent.width - 48px; height: parent.height - 88px; spacing: 12px; alignment: start;
+                            Text { text: "FEATURED ON GOG"; color: #ddd; font-size: 11px; }
+                            Text { text: root.store-deals[root.carousel-idx].title; color: white; font-size: 26px; font-weight: 700; overflow: elide; }
+                            HorizontalLayout {
+                                alignment: start; spacing: 12px;
+                                PrimaryBtn { text: "View offer · " + root.store-deals[root.carousel-idx].price;
+                                    clicked => { root.open-link("https://www.gog.com/en/game/" + root.store-deals[root.carousel-idx].id); } }
+                            }
+                        }
+                        HorizontalLayout {
+                            y: parent.height - 48px; height: 32px; width: parent.width;
+                            alignment: center; spacing: 6px;
+                            for i in min(5, root.store-deals.length): Rectangle {
+                                width: 32px; height: 32px;
+                                Rectangle {
+                                    width: root.carousel-idx == i ? 20px : 8px; height: 8px;
+                                    x: (parent.width - self.width) / 2; y: 12px; border-radius: 4px;
+                                    background: root.carousel-idx == i ? #fff : (dot.has-hover ? #ddd : #ffffff77);
+                                    animate width, background { duration: 160ms; }
+                                }
+                                dot := TouchArea { clicked => { root.carousel-idx = i; } }
+                            }
+                        }
+                    }
+                    Timer {
+                        interval: 6s;
+                        running: (root.window-active || root.preview-autoplay) && !carousel.has-hover && !root.store-loading && parent.slide-count > 1;
+                        triggered => { root.carousel-idx = mod(root.carousel-idx + 1, parent.slide-count); }
+                    }
+                }
+
+                Flickable {
+                    content-width: self.width;
+                    content-height: root.store-deals.length * 78px;
+                    VerticalLayout {
+                        width: parent.width; alignment: start; spacing: 6px;
+                        for d in root.store-deals: StoreCard {
+                            item: d;
+                            clicked => { root.open-link("https://www.gog.com/en/game/" + d.id); }
+                        }
+                    }
+                }
+            }
+
+            // PAGE 11: ORDER HISTORY
+            if root.current-page == 11: VerticalLayout {
+                spacing: 16px;
+                SectionLabel { text: "ORDER HISTORY"; height: 24px; }
+                Rectangle {
+                    height: 80px; background: root.theme-card-bg; border-radius: 4px; border-width: 1px; border-color: root.theme-card-border;
+                    HorizontalLayout {
+                        padding: 16px; spacing: 14px;
+                        VerticalLayout {
+                            alignment: center; spacing: 4px;
+                            Text { text: "Account Purchases"; color: #fff; font-weight: 700; font-size: 14px; }
+                            Text { text: "You have " + root.games.length + " games registered to your GOG library."; color: #aaa; font-size: 12px; }
+                        }
+                        Rectangle {}
+                        Btn { y: 6px; text: "View Full History on GOG.com ↗"; clicked => { root.open-link("https://www.gog.com/account/settings/orders"); } }
+                    }
+                }
+                Rectangle {}
+            }
+
+            // PAGE 12: BOOKMARKS
+            if root.current-page == 12: VerticalLayout {
+                spacing: 16px;
+                HorizontalLayout {
+                    height: 34px;
+                    SectionLabel { text: "BOOKMARKS (" + root.bookmarks.length + ")"; }
+                    Rectangle {}
+                    Btn { text: "＋ Add from library"; clicked => { root.navigate-to(1); } }
+                }
+                if root.bookmark-status != "": Text { text: root.bookmark-status; color: #f59e0b; wrap: word-wrap; }
+                if root.bookmarks.length == 0: EmptyState {
+                    title: "Your favorite games, one click away";
+                    description: "Open a game in your library and choose Add bookmark.";
+                    icon: @image-url("../assets/icons/bookmark.png");
+                    action: "Browse library"; clicked => { root.navigate-to(1); }
+                }
+                if root.bookmarks.length > 0: Flickable {
+                    content-width: self.width;
+                    content-height: root.bookmarks.length * 64px;
+                    for g[i] in root.bookmarks: Rectangle {
+                        y: i * 64px; width: parent.width; height: 58px; background: root.theme-card-bg;
+                        HorizontalLayout {
+                            width: parent.width; height: parent.height; padding: 8px; spacing: 14px;
+                            Image { source: g.cover; width: 76px; height: 42px; image-fit: contain; }
+                            Text { text: g.title; color: white; vertical-alignment: center; horizontal-stretch: 1; overflow: elide; }
+                            Btn { text: "Open"; clicked => { root.selected-game = g; root.navigate-to(20); } }
+                            Btn { text: "Remove"; clicked => { root.toggle-bookmark(g.id); } }
+                        }
+                    }
+                }
+            }
+
+            // PAGE 13: PREFERENCES
+            if root.current-page == 13: VerticalLayout {
+                spacing: 16px;
+                SectionLabel { text: "PREFERENCES"; height: 24px; }
+                
+                // Theme selection card
+                Rectangle {
+                    height: 140px; background: root.theme-card-bg; border-radius: 6px; border-width: 1px; border-color: root.theme-card-border;
+                    VerticalLayout {
+                        padding: 18px; spacing: 14px;
+                        VerticalLayout {
+                            spacing: 4px;
+                            Text { text: "Interface Theme & Accent Color"; color: #ffffff; font-weight: 700; font-size: 14px; }
+                            Text { text: "Customize the client palette, gradient cards, and accent highlights."; color: #7f7f8c; font-size: 12px; }
+                        }
+                        HorizontalLayout {
+                            spacing: 12px;
+                            // Theme 0: Nebula Dark
+                            Rectangle {
+                                width: 150px; height: 38px; border-radius: 4px;
+                                background: root.selected-theme == 0 ? #28282e : (th0-ta.has-hover ? #222226 : #1a1824);
+                                border-width: root.selected-theme == 0 ? 2px : 1px;
+                                border-color: root.selected-theme == 0 ? #8b5cf6 : #383842;
+                                HorizontalLayout {
+                                    alignment: center; spacing: 8px;
+                                    Rectangle { width: 12px; height: 12px; border-radius: 6px; background: #8b5cf6; y: (parent.height - self.height) / 2; }
+                                    Text { text: "Nebula Dark"; color: root.selected-theme == 0 ? #ffffff : #aaaaaa; font-size: 12px; font-weight: 700; vertical-alignment: center; }
+                                }
+                                th0-ta := TouchArea { clicked => { root.selected-theme = 0; } }
+                            }
+                            // Theme 1: Classic Galaxy
+                            Rectangle {
+                                width: 150px; height: 38px; border-radius: 4px;
+                                background: root.selected-theme == 1 ? #28282e : (th1-ta.has-hover ? #222226 : #1a1a1c);
+                                border-width: root.selected-theme == 1 ? 2px : 1px;
+                                border-color: root.selected-theme == 1 ? #98bf1e : #383842;
+                                HorizontalLayout {
+                                    alignment: center; spacing: 8px;
+                                    Rectangle { width: 12px; height: 12px; border-radius: 6px; background: #98bf1e; y: (parent.height - self.height) / 2; }
+                                    Text { text: "Classic Galaxy"; color: root.selected-theme == 1 ? #ffffff : #aaaaaa; font-size: 12px; font-weight: 700; vertical-alignment: center; }
+                                }
+                                th1-ta := TouchArea { clicked => { root.selected-theme = 1; } }
+                            }
+                            // Theme 2: Cyberpunk Cyan
+                            Rectangle {
+                                width: 150px; height: 38px; border-radius: 4px;
+                                background: root.selected-theme == 2 ? #162238 : (th2-ta.has-hover ? #111a2d : #0d1524);
+                                border-width: root.selected-theme == 2 ? 2px : 1px;
+                                border-color: root.selected-theme == 2 ? #06b6d4 : #1e293b;
+                                HorizontalLayout {
+                                    alignment: center; spacing: 8px;
+                                    Rectangle { width: 12px; height: 12px; border-radius: 6px; background: #06b6d4; y: (parent.height - self.height) / 2; }
+                                    Text { text: "Cyberpunk Cyan"; color: root.selected-theme == 2 ? #ffffff : #aaaaaa; font-size: 12px; font-weight: 700; vertical-alignment: center; }
+                                }
+                                th2-ta := TouchArea { clicked => { root.selected-theme = 2; } }
+                            }
+                        }
+                    }
+                }
+
+                // Window visual effects & transparency
+                Rectangle {
+                    height: 120px; background: root.theme-card-bg; border-radius: 6px; border-width: 1px; border-color: root.theme-card-border;
+                    HorizontalLayout {
+                        padding: 18px; spacing: 16px; alignment: space-between;
+                        VerticalLayout {
+                            spacing: 6px; alignment: center;
+                            Text { text: Strings.pref-glass-title; color: #ffffff; font-weight: 700; font-size: 14px; }
+                            Text { text: Strings.pref-glass-desc; color: #7f7f8c; font-size: 12px; }
+                            Text { text: root.glass-enabled ? Strings.pref-glass-active : Strings.pref-glass-inactive; color: root.glass-enabled ? #10b981 : #f59e0b; font-size: 11px; font-weight: 600; }
+                        }
+                        Btn {
+                            text: root.glass-enabled ? "Blur enabled" : "Blur disabled";
+                            y: (parent.height - self.height) / 2;
+                            clicked => { root.glass-enabled = !root.glass-enabled; }
+                        }
+                    }
+                }
+
+                // Cloud Storage & Wine/Proton runner preferences
+                Rectangle {
+                    height: 130px; background: root.theme-card-bg; border-radius: 6px; border-width: 1px; border-color: root.theme-card-border;
+                    HorizontalLayout {
+                        padding: 18px; spacing: 16px; alignment: space-between;
+                        VerticalLayout {
+                            spacing: 6px; alignment: center;
+                            Text { text: Strings.pref-runner-title; color: #ffffff; font-weight: 700; font-size: 14px; }
+                            Text { text: Strings.pref-runner-desc; color: #7f7f8c; font-size: 12px; }
+                            Text { text: Strings.pref-runner-sync; color: root.theme-accent; font-size: 11px; }
+                        }
+                        Btn {
+                            text: Strings.pref-btn-rescan;
+                            y: (parent.height - self.height) / 2;
+                            clicked => { root.sync-clicked(); }
+                        }
+                    }
+                }
+                Rectangle {}
+            }
+
+            // PAGE 20: GAME DETAIL VIEW
+            if root.current-page == 20: VerticalLayout {
+                spacing: 20px;
+                Rectangle {
+                    height: 280px; border-radius: 4px; clip: true;
+                    background: #1e1e24;
+                    // Soft blurred backdrop
+                    Image {
+                        source: root.glass-enabled ? (root.selected-game.blur.width > 0 ? root.selected-game.blur : root.selected-game.cover) : root.selected-game.cover;
+                        width: parent.width; height: parent.height;
+                        image-fit: cover; opacity: 0.35;
+                    }
+                    Rectangle {
+                        background: @linear-gradient(180deg, transparent, #2b2b2b);
+                    }
+                    HorizontalLayout {
+                        padding: 24px; spacing: 28px;
+                        Rectangle {
+                            width: 260px; height: 146px; border-radius: 3px; clip: true;
+                            drop-shadow-blur: 24px; drop-shadow-color: #000000c0;
+                            Image { source: root.selected-game.cover; width: parent.width; height: parent.height; image-fit: contain; }
+                        }
+                        VerticalLayout {
+                            alignment: center; spacing: 10px;
+                            Text { text: root.selected-game.title; color: white; font-size: 26px; font-weight: 800; }
+                            HorizontalLayout {
+                                spacing: 14px;
+                                Text { text: "Category: " + root.selected-game.category; color: #a0a0a0; font-size: 13px; }
+                                Text { text: "•"; color: #666; font-size: 13px; }
+                                Text { text: root.selected-game.windows ? "Windows (Wine/Proton)" : (root.selected-game.linux ? "Native Linux" : "Other"); color: #98bf1e; font-size: 13px; }
+                            }
+                            HorizontalLayout {
+                                spacing: 14px; padding-top: 10px;
+                                PrimaryBtn {
+                                    text: root.selected-game.installed ? "▶  PLAY" : "⬇  INSTALL";
+                                    clicked => {
+                                        if (root.selected-game.installed) {
+                                            root.play-game(root.selected-game.id);
+                                        } else {
+                                            root.install-game(root.selected-game.id);
+                                        }
+                                    }
+                                }
+                                Btn { text: root.selected-bookmarked ? "Remove bookmark" : "Add bookmark"; clicked => { root.toggle-bookmark(root.selected-game.id); } }
+                                if root.selected-game.installed: Btn { text: "Remove from Nebula"; clicked => { root.remove-import(root.selected-game.id); } }
+                                Btn { text: "⟳ Sync Saves Now"; clicked => { root.sync-clicked(); } }
+                            }
+                        }
+                    }
+                }
+
+                SectionLabel { text: "GALAXY CLOUD SYNC & DETAILS"; height: 20px; }
+                HorizontalLayout {
+                    spacing: 20px; height: 160px;
+                    Rectangle {
+                        background: #202022; border-radius: 3px; border-width: 1px; border-color: #333338;
+                        VerticalLayout {
+                            padding: 16px; spacing: 8px;
+                            Text { text: "Cloud Save Status"; color: #b36bff; font-weight: 700; font-size: 14px; }
+                            Text { text: "Cloud save synchronization active"; color: #10b981; font-size: 12px; }
+                            Text { text: "Saves sync before launch & on exit"; color: #aaa; font-size: 12px; }
+                            Text { text: "Windows games launch via Proton/Wine"; color: #777; font-size: 12px; }
+                        }
+                    }
+                    Rectangle {
+                        background: #202022; border-radius: 3px; border-width: 1px; border-color: #333338;
+                        VerticalLayout {
+                            padding: 16px; spacing: 8px;
+                            Text { text: "Game ID"; color: #ffffff; font-weight: 700; font-size: 14px; }
+                            Text { text: "" + root.selected-game.id; color: #aaa; font-size: 13px; }
+                            Text { text: "Slug: " + root.selected-game.slug; color: #777; font-size: 12px; }
+                        }
+                    }
+                }
+                Rectangle {}
+            }
+        }
+    }
+    if root.import-open: Rectangle {
+        width: parent.width; height: parent.height; background: #00000099;
+        TouchArea { clicked => { root.import-open = false; } }
+        Rectangle {
+            width: 600px; height: 360px; x: (parent.width - self.width) / 2; y: (parent.height - self.height) / 2;
+            background: #26262c; border-radius: 6px; border-width: 1px; border-color: #55555e;
+            TouchArea {}
+            VerticalLayout {
+                padding: 24px; spacing: 12px;
+                Text { text: "Import installed game"; color: white; font-size: 20px; font-weight: 700; }
+                Text { text: "Select a native executable or a Windows .exe (runs via Proton/Wine)."; color: #aaa; font-size: 12px; }
+                Text { text: "Game title"; color: #ddd; font-size: 12px; }
+                Rectangle {
+                    height: 36px; background: #18181c; border-width: 1px; border-color: #45454f;
+                    TextInput { x: 10px; width: parent.width - 20px; height: parent.height; text <=> root.import-title;
+                        color: white; vertical-alignment: center; single-line: true; }
+                }
+                Text { text: "Executable path"; color: #ddd; font-size: 12px; }
+                HorizontalLayout {
+                    height: 36px; spacing: 10px;
+                    Rectangle {
+                        horizontal-stretch: 1; background: #18181c; border-width: 1px; border-color: #45454f;
+                        TextInput { x: 10px; width: parent.width - 20px; height: parent.height; text <=> root.import-path;
+                            color: white; vertical-alignment: center; single-line: true; }
+                    }
+                    Btn { text: "Browse…"; clicked => { root.browse-game(); } }
+                }
+                Text { text: root.import-error; color: #f59e0b; font-size: 12px; wrap: word-wrap; }
+                Text { text: "Game files stay where they are. Importing does not configure cloud saves."; color: #888; font-size: 11px; }
+                HorizontalLayout {
+                    alignment: end; spacing: 12px;
+                    Btn { text: "Cancel"; clicked => { root.import-open = false; } }
+                    PrimaryBtn { text: "Import game"; clicked => { root.import-game(root.import-title, root.import-path); } }
+                }
+            }
+        }
+    }
+
+}
