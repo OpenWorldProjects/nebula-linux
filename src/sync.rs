@@ -428,4 +428,12 @@ mod tests {
         assert_eq!(cid, "55555");
         std::fs::remove_dir_all(&dir).unwrap();
     }
+
+    #[tokio::test]
+    #[ignore = "Requires live GOG session"]
+    async fn live_sync_against_the_storm() {
+        let res = sync_game(1460447406, SyncDirection::TwoWay).await;
+        println!("Sync result: {:?}", res);
+        assert!(res.is_ok());
+    }
 }

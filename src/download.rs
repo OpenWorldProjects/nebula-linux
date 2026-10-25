@@ -51,8 +51,24 @@ fn parse_info(bytes: &[u8]) -> Result<(String, u64, u64), String> {
     if folder.is_empty() || folder == "." || folder == ".." || folder.contains(['/', '\\']) {
         return Err("Downloader returned an unsafe installation folder".into());
     }
-    let download = info["download_size"].as_u64().ok_or("Missing download size")?;
-    let disk = info["disk_size"].as_u64().filter(|n| *n > 0).ok_or("No installable files available for this platform")?;
+    let (download, disk) = if let (Some(dl), Some(dk)) = (info["download_size"].as_u64(), info["disk_size"].as_u64().filter(|n| *n > 0)) {
+        (dl, dk)
+    } else if let Some(size_map) = info["size"].as_object() {
+        let mut best = (0, 0);
+        for (_lang, entry) in size_map {
+            let dl = entry["download_size"].as_u64().unwrap_or(0);
+            let dk = entry["disk_size"].as_u64().unwrap_or(0);
+            if dk > best.1 {
+                best = (dl, dk);
+            }
+        }
+        if best.1 == 0 {
+            return Err("No installable files available for this platform".into());
+        }
+        best
+    } else {
+        return Err("Missing download size".into());
+    };
     Ok((folder.to_owned(), download, disk))
 }
 
@@ -240,5 +256,12 @@ mod integration_tests {
     async fn live_linux_install_metadata() {
         let plan = prepare(1293297882).await.unwrap();
         println!("Native Linux metadata: {} — download {} MiB, disk {} MiB", plan.game.title, plan.download_size / 1048576, plan.disk_size / 1048576);
+    }
+    #[tokio::test]
+    #[ignore = "Requires current GOG login and network; reads metadata only"]
+    async fn live_windows_install_metadata() {
+        let plan = prepare(1460447406).await.unwrap();
+        println!("Windows metadata: {} — download {} MiB, disk {} MiB, folder: {}", plan.game.title, plan.download_size / 1048576, plan.disk_size / 1048576, plan.folder);
+        assert_eq!(plan.platform, "windows");
     }
 }
