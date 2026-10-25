@@ -217,8 +217,19 @@ pub async fn resolve_save_locations(
     if is_windows {
         let drive_c = if prefix_dir.join("pfx/drive_c").is_dir() {
             prefix_dir.join("pfx/drive_c")
-        } else {
+        } else if prefix_dir.join("drive_c").is_dir() {
             prefix_dir.join("drive_c")
+        } else {
+            // Check default/preferred runner. On Linux Proton uses prefix/pfx/drive_c
+            let preferred = crate::preferences::Preferences::load().runner;
+            let is_proton = crate::runner::choose(preferred.as_deref())
+                .map(|r| r.proton)
+                .unwrap_or(true);
+            if is_proton {
+                prefix_dir.join("pfx/drive_c")
+            } else {
+                prefix_dir.join("drive_c")
+            }
         };
 
         let users_dir = drive_c.join("users");
@@ -323,7 +334,22 @@ pub async fn sync_game(game_id: i32, direction: SyncDirection) -> Result<String,
     let mut sync_count = 0;
 
     for loc in locations {
-        let ts = game_entry.get(&loc.name).cloned().unwrap_or_else(|| "0".to_string());
+        let is_empty = !loc.local_path.exists()
+            || std::fs::read_dir(&loc.local_path)
+                .map(|mut it| it.next().is_none())
+                .unwrap_or(true);
+
+        // If local save folder has no files and we are downloading, always fetch from ts=0 (full download)
+        let ts = if is_empty && matches!(direction, SyncDirection::DownloadOnly | SyncDirection::TwoWay) {
+            "0".to_string()
+        } else {
+            game_entry.get(&loc.name).cloned().unwrap_or_else(|| "0".to_string())
+        };
+
+        if is_empty && direction == SyncDirection::UploadOnly {
+            eprintln!("[sync] Local save directory {:?} is empty, skipping upload.", loc.local_path);
+            continue;
+        }
 
         let mut cmd = tokio::process::Command::new(&helper);
         cmd.arg("--auth-config-path").arg(&auth_file)
