@@ -472,6 +472,23 @@ export component MainWindow inherits Window {
     callback play-game(int);
     callback install-game(int);
     callback fetch-deals(bool, string, string);
+
+    // In-app installation dialog & progress
+    in-out property <bool> install-open: false;
+    in-out property <int> install-game-id: 0;
+    in property <string> install-game-title: "";
+    in property <string> install-runner-note: "";
+    in property <string> install-download-size: "";
+    in property <string> install-disk-size: "";
+    in property <string> install-req-space: "";
+    in-out property <string> install-destination: "";
+    in-out property <string> install-error: "";
+    in property <bool> install-in-progress: false;
+    in property <int> install-progress-percent: 0;
+    in property <string> install-progress-text: "";
+    callback start-install(int, string);
+    callback cancel-install();
+    callback browse-install-dir();
     
     // Page IDs:
     // 0=Recent, 1=Owned Games, 2=Installed, 3=Subscriptions, 4=Downloads
@@ -867,6 +884,36 @@ export component MainWindow inherits Window {
             if root.current-page == 4: VerticalLayout {
                 spacing: 16px;
                 SectionLabel { text: "DOWNLOAD QUEUE"; height: 24px; }
+                if root.install-in-progress: Rectangle {
+                    height: 84px; background: #232029; border-radius: 6px; border-width: 1px; border-color: #4b3d68;
+                    HorizontalLayout {
+                        padding: 16px; spacing: 16px;
+                        Image { source: @image-url("../assets/icons/downloads.png"); width: 32px; height: 32px; vertical-alignment: center; }
+                        VerticalLayout {
+                            alignment: center; spacing: 8px; horizontal-stretch: 1;
+                            HorizontalLayout {
+                                Text { text: "Installing " + root.install-game-title; color: #fff; font-weight: 700; font-size: 14px; }
+                                Rectangle { horizontal-stretch: 1; }
+                                Text { text: "" + root.install-progress-percent + "%"; color: #a4d42b; font-weight: 700; font-size: 14px; }
+                            }
+                            Rectangle {
+                                height: 8px; background: #1a1820; border-radius: 4px; border-width: 1px; border-color: #332d42;
+                                Rectangle {
+                                    x: 0; y: 0;
+                                    width: max(6px, (parent.width - 2px) * min(1.0, max(0.0, root.install-progress-percent / 100.0)));
+                                    height: parent.height;
+                                    background: @linear-gradient(90deg, #8fb920, #a4d42b);
+                                    border-radius: 3px;
+                                }
+                            }
+                            Text { text: root.install-progress-text; color: #aaa; font-size: 11px; }
+                        }
+                        VerticalLayout {
+                            alignment: center;
+                            Btn { text: "View Details"; clicked => { root.install-open = true; } }
+                        }
+                    }
+                }
                 if root.download-total > 0 && root.download-done < root.download-total: Rectangle {
                     height: 70px; background: #232029; border-radius: 4px; border-width: 1px; border-color: #3b324d;
                     HorizontalLayout {
@@ -879,9 +926,9 @@ export component MainWindow inherits Window {
                         }
                     }
                 }
-                if root.download-total == 0 || root.download-done >= root.download-total: EmptyState {
+                if !root.install-in-progress && (root.download-total == 0 || root.download-done >= root.download-total): EmptyState {
                     title: "Download queue is empty";
-                    description: "Artwork downloads appear here.";
+                    description: "Active game installations and artwork downloads appear here.";
                     icon: @image-url("../assets/icons/downloads.png");
                 }
             }
@@ -1177,10 +1224,12 @@ export component MainWindow inherits Window {
                             HorizontalLayout {
                                 spacing: 14px; padding-top: 10px;
                                 PrimaryBtn {
-                                    text: root.selected-game.installed ? "▶  PLAY" : "⬇  INSTALL";
+                                    text: root.selected-game.installed ? "▶  PLAY" : (root.install-in-progress && root.install-game-id == root.selected-game.id ? "⬇  INSTALLING (" + root.install-progress-percent + "%)" : "⬇  INSTALL");
                                     clicked => {
                                         if (root.selected-game.installed) {
                                             root.play-game(root.selected-game.id);
+                                        } else if (root.install-in-progress && root.install-game-id == root.selected-game.id) {
+                                            root.install-open = true;
                                         } else {
                                             root.install-game(root.selected-game.id);
                                         }
@@ -1254,6 +1303,143 @@ export component MainWindow inherits Window {
                     alignment: end; spacing: 12px;
                     Btn { text: "Cancel"; clicked => { root.import-open = false; } }
                     PrimaryBtn { text: "Import game"; clicked => { root.import-game(root.import-title, root.import-path); } }
+                }
+            }
+        }
+    }
+
+    if root.install-open: Rectangle {
+        width: parent.width; height: parent.height; background: #000000aa;
+        TouchArea {
+            clicked => {
+                if (!root.install-in-progress) {
+                    root.install-open = false;
+                }
+            }
+        }
+        Rectangle {
+            width: 620px;
+            height: root.install-in-progress ? 270px : 430px;
+            x: (parent.width - self.width) / 2;
+            y: (parent.height - self.height) / 2;
+            background: #242429;
+            border-radius: 8px;
+            border-width: 1px;
+            border-color: #40404a;
+            drop-shadow-blur: 32px;
+            drop-shadow-color: #000000e0;
+            TouchArea {}
+
+            VerticalLayout {
+                padding: 24px; spacing: 14px;
+
+                if !root.install-in-progress: VerticalLayout {
+                    spacing: 14px;
+                    HorizontalLayout {
+                        alignment: space-between;
+                        VerticalLayout {
+                            spacing: 4px;
+                            Text { text: "Install " + root.install-game-title; color: white; font-size: 20px; font-weight: 700; }
+                            Text { text: root.install-runner-note; color: #a4d42b; font-size: 12px; font-weight: 600; }
+                        }
+                    }
+
+                    HorizontalLayout {
+                        spacing: 12px;
+                        Rectangle {
+                            horizontal-stretch: 1; height: 60px; background: #1c1c20; border-radius: 4px; border-width: 1px; border-color: #33333a;
+                            VerticalLayout {
+                                padding: 10px; alignment: center; spacing: 2px;
+                                Text { text: "DOWNLOAD"; color: #888; font-size: 10px; font-weight: 700; }
+                                Text { text: root.install-download-size; color: #fff; font-size: 14px; font-weight: 700; }
+                            }
+                        }
+                        Rectangle {
+                            horizontal-stretch: 1; height: 60px; background: #1c1c20; border-radius: 4px; border-width: 1px; border-color: #33333a;
+                            VerticalLayout {
+                                padding: 10px; alignment: center; spacing: 2px;
+                                Text { text: "INSTALLED SIZE"; color: #888; font-size: 10px; font-weight: 700; }
+                                Text { text: root.install-disk-size; color: #fff; font-size: 14px; font-weight: 700; }
+                            }
+                        }
+                        Rectangle {
+                            horizontal-stretch: 1; height: 60px; background: #1c1c20; border-radius: 4px; border-width: 1px; border-color: #33333a;
+                            VerticalLayout {
+                                padding: 10px; alignment: center; spacing: 2px;
+                                Text { text: "FREE SPACE NEEDED"; color: #888; font-size: 10px; font-weight: 700; }
+                                Text { text: root.install-req-space; color: #b36bff; font-size: 14px; font-weight: 700; }
+                            }
+                        }
+                    }
+
+                    Text { text: "Install directory (game folder will be created inside):"; color: #ddd; font-size: 12px; }
+                    HorizontalLayout {
+                        height: 38px; spacing: 10px;
+                        Rectangle {
+                            horizontal-stretch: 1; background: #18181c; border-radius: 4px; border-width: 1px; border-color: #45454f;
+                            TextInput {
+                                x: 10px; width: parent.width - 20px; height: parent.height;
+                                text <=> root.install-destination;
+                                color: white; vertical-alignment: center; single-line: true; font-size: 12px;
+                            }
+                        }
+                        Btn { text: "Browse…"; clicked => { root.browse-install-dir(); } }
+                    }
+
+                    if root.install-error != "": Text {
+                        text: root.install-error; color: #ef4444; font-size: 12px; wrap: word-wrap; }
+
+                    HorizontalLayout {
+                        alignment: end; spacing: 12px; padding-top: 8px;
+                        Btn { text: "Cancel"; clicked => { root.install-open = false; } }
+                        PrimaryBtn {
+                            text: "⬇  Start Installation";
+                            clicked => { root.start-install(root.install-game-id, root.install-destination); }
+                        }
+                    }
+                }
+
+                if root.install-in-progress: VerticalLayout {
+                    spacing: 16px;
+                    Text { text: "Installing " + root.install-game-title; color: white; font-size: 20px; font-weight: 700; }
+
+                    HorizontalLayout {
+                        alignment: space-between;
+                        Text { text: root.install-progress-text; color: #ccc; font-size: 13px; }
+                        Text {
+                            text: "" + root.install-progress-percent + "%";
+                            color: #a4d42b; font-size: 15px; font-weight: 700;
+                        }
+                    }
+
+                    Rectangle {
+                        height: 12px; background: #18181c; border-radius: 6px; border-width: 1px; border-color: #33333a;
+                        Rectangle {
+                            x: 0; y: 0;
+                            width: max(8px, (parent.width - 2px) * min(1.0, max(0.0, root.install-progress-percent / 100.0)));
+                            height: parent.height;
+                            background: @linear-gradient(90deg, #8fb920, #a4d42b);
+                            border-radius: 5px;
+                            animate width { duration: 150ms; easing: ease-out; }
+                        }
+                    }
+
+                    Text {
+                        text: "Downloading directly from GOG content servers. You can minimize this dialog or browse other games.";
+                        color: #888; font-size: 11px; wrap: word-wrap;
+                    }
+
+                    HorizontalLayout {
+                        alignment: space-between; padding-top: 8px;
+                        Btn {
+                            text: "Hide Dialog";
+                            clicked => { root.install-open = false; }
+                        }
+                        Btn {
+                            text: "Cancel Installation";
+                            clicked => { root.cancel-install(); }
+                        }
+                    }
                 }
             }
         }

@@ -186,6 +186,7 @@ mod tests {
 }
 
 /// Use a small native dialog for destination/size confirmation and cancellable progress.
+#[allow(dead_code)]
 pub async fn interactive(id: i32) -> Result<(), String> {
     use tokio::io::AsyncWriteExt;
     let plan = prepare(id).await?;

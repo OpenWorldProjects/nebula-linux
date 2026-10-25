@@ -495,17 +495,163 @@ fn main() -> Result<(), slint::PlatformError> {
     let install_rt = rt.clone();
     let installing = Arc::new(AtomicBool::new(false));
     let install_busy = installing.clone();
+    let cancel_install = Arc::new(AtomicBool::new(false));
+    let current_plan = Arc::new(std::sync::Mutex::new(None::<download::Plan>));
+
+    let plan_store = current_plan.clone();
+    let weak_prepare = weak.clone();
+    let rt_prepare = install_rt.clone();
+    let installing_prepare = installing.clone();
     ui.on_install_game(move |id| {
-        if installing.swap(true, Ordering::SeqCst) { return; }
-        if let Some(ui) = weak.upgrade() { ui.set_sync_status("Reading native Linux installer information…".into()); }
-        let weak = weak.clone();
-        let installing = installing.clone();
-        install_rt.spawn(async move {
-            let result = download::interactive(id).await;
+        if installing_prepare.load(Ordering::SeqCst) {
+            if let Some(ui) = weak_prepare.upgrade() {
+                ui.set_install_open(true);
+            }
+            return;
+        }
+        if let Some(ui) = weak_prepare.upgrade() {
+            ui.set_sync_status("Reading installation information…".into());
+        }
+        let weak = weak_prepare.clone();
+        let plan_store = plan_store.clone();
+        rt_prepare.spawn(async move {
+            let res = download::prepare(id).await;
+            let _ = weak.upgrade_in_event_loop(move |ui| match res {
+                Ok(plan) => {
+                    let download_gb = format!("{:.1} GB", plan.download_size as f64 / 1_073_741_824.0);
+                    let disk_gb = format!("{:.1} GB", plan.disk_size as f64 / 1_073_741_824.0);
+                    let req_gb = format!("{:.1} GB", download::required_space(&plan) as f64 / 1_073_741_824.0);
+                    let runner_note = if plan.platform == "windows" {
+                        let name = runner::choose(preferences::Preferences::load().runner.as_deref())
+                            .map(|r| r.name)
+                            .unwrap_or_else(|| "Wine/Proton".into());
+                        format!("Windows build — runs with {name}")
+                    } else {
+                        "Native Linux build".to_string()
+                    };
+                    let home = dirs::home_dir().unwrap_or_default();
+                    let default_dest = home.join("Games/Nebula");
+
+                    ui.set_install_game_id(id);
+                    ui.set_install_game_title(plan.game.title.clone().into());
+                    ui.set_install_runner_note(runner_note.into());
+                    ui.set_install_download_size(download_gb.into());
+                    ui.set_install_disk_size(disk_gb.into());
+                    ui.set_install_req_space(req_gb.into());
+                    ui.set_install_destination(default_dest.to_string_lossy().as_ref().into());
+                    ui.set_install_error("".into());
+                    ui.set_install_in_progress(false);
+                    ui.set_install_progress_percent(0);
+                    ui.set_install_open(true);
+                    ui.set_sync_status(format!("Ready to install {}", plan.game.title).into());
+
+                    let mut store = plan_store.lock().unwrap();
+                    *store = Some(plan);
+                }
+                Err(err) => {
+                    ui.set_sync_status(format!("Install error: {err}").into());
+                }
+            });
+        });
+    });
+
+    let plan_start = current_plan.clone();
+    let cancel_start = cancel_install.clone();
+    let weak_start = weak.clone();
+    let rt_start = install_rt.clone();
+    let installing_start = installing.clone();
+    ui.on_start_install(move |id, destination| {
+        if installing_start.swap(true, Ordering::SeqCst) {
+            return;
+        }
+        let plan = {
+            let store = plan_start.lock().unwrap();
+            store.clone()
+        };
+        let plan = match plan {
+            Some(p) if p.game.id as i32 == id => p,
+            _ => {
+                installing_start.store(false, Ordering::SeqCst);
+                if let Some(ui) = weak_start.upgrade() {
+                    ui.set_install_error("Installation plan expired. Please try again.".into());
+                }
+                return;
+            }
+        };
+
+        cancel_start.store(false, Ordering::SeqCst);
+        if let Some(ui) = weak_start.upgrade() {
+            ui.set_install_in_progress(true);
+            ui.set_install_progress_percent(0);
+            ui.set_install_progress_text("Starting download…".into());
+            ui.set_install_error("".into());
+        }
+
+        let weak_prog = weak_start.clone();
+        let weak_done = weak_start.clone();
+        let cancel = cancel_start.clone();
+        let installing = installing_start.clone();
+        let dest_path = std::path::PathBuf::from(destination.trim());
+        let game_title = plan.game.title.clone();
+
+        rt_start.spawn(async move {
+            let title_clone = game_title.clone();
+            let result = download::install(plan, dest_path, cancel, move |p| {
+                let weak = weak_prog.clone();
+                let title = title_clone.clone();
+                let _ = weak.upgrade_in_event_loop(move |ui| {
+                    let pct = (p.clamp(0.0, 100.0).round() as i32).clamp(0, 100);
+                    ui.set_install_progress_percent(pct);
+                    ui.set_install_progress_text(format!("Downloading and extracting… {pct}%").into());
+                    ui.set_sync_status(format!("Downloading {title}… {pct}%", title = title).into());
+                });
+            }).await;
+
             installing.store(false, Ordering::SeqCst);
+            let _ = weak_done.upgrade_in_event_loop(move |ui| {
+                match result {
+                    Ok(()) => {
+                        ui.set_install_in_progress(false);
+                        ui.set_install_open(false);
+                        refresh_library_views(&ui);
+                        ui.set_sync_status(format!("Installation of {game_title} complete! Click Play to start.").into());
+                    }
+                    Err(err) => {
+                        ui.set_install_in_progress(false);
+                        ui.set_install_error(err.clone().into());
+                        ui.set_sync_status(format!("Install error: {err}").into());
+                    }
+                }
+            });
+        });
+    });
+
+    let cancel_click = cancel_install.clone();
+    let weak_cancel = weak.clone();
+    ui.on_cancel_install(move || {
+        cancel_click.store(true, Ordering::SeqCst);
+        if let Some(ui) = weak_cancel.upgrade() {
+            ui.set_install_progress_text("Cancelling installation…".into());
+        }
+    });
+
+    let weak_browse = weak.clone();
+    let rt_browse = install_rt.clone();
+    ui.on_browse_install_dir(move || {
+        let weak = weak_browse.clone();
+        rt_browse.spawn(async move {
+            let result = tokio::process::Command::new("zenity")
+                .args(["--file-selection", "--directory", "--title=Select Installation Folder"])
+                .output().await;
             let _ = weak.upgrade_in_event_loop(move |ui| {
-                refresh_library_views(&ui);
-                ui.set_sync_status(match result { Ok(()) => "Installation complete. Select Play to launch.".into(), Err(e) => e.into() });
+                if let Ok(output) = result {
+                    if output.status.success() {
+                        let path = String::from_utf8_lossy(&output.stdout).trim().to_string();
+                        if !path.is_empty() {
+                            ui.set_install_destination(path.into());
+                        }
+                    }
+                }
             });
         });
     });
